@@ -1,0 +1,44 @@
+# Razorpay AI Revenue Recovery
+
+A test-mode-only revenue recovery engine that diagnoses failed payments, recommends an appropriate recovery action, enforces deterministic safety policy, and makes every decision auditable.
+
+## Project status
+
+Phase 1 — foundation in progress. The repository contains a FastAPI service, a Next.js 14 dashboard shell, PostgreSQL schema, Docker database, and environment templates. Phase 2 will add the detection-to-audit pipeline.
+
+## Architecture
+
+```
+frontend/     Next.js 14 + TypeScript + Tailwind dashboard
+backend/      FastAPI recovery API
+infra/postgres/ PostgreSQL initialization schema
+```
+
+The production workflow is: detect → diagnose → contextualize → score → decide → policy gate → execute → track → aggregate. Razorpay calls remain sandbox/test-mode only.
+
+## Local setup
+
+1. Copy `.env.example` to `.env` and fill in the values you have.
+2. Start PostgreSQL: `docker compose up -d db`
+3. Backend:
+   ```bash
+   cd backend
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -e '.[dev]'
+   uvicorn app.main:app --reload --port 8000
+   ```
+4. Frontend:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+Open `http://localhost:3000/dashboard`; API health is at `http://localhost:8000/health`.
+
+## Credentials
+
+No secret is needed to run the dashboard shell or API health check. Phase 2 needs Razorpay **test-mode** `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. Keep them only in the uncommitted `.env` file; never paste live-mode keys.
+
+Phase 3 will optionally use `ANTHROPIC_API_KEY`, with a deterministic fallback when unavailable.
