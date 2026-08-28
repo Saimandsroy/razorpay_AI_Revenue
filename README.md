@@ -52,3 +52,7 @@ Set `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` only when Phase 3 explanation enrichm
 Start a test-mode batch with `POST /api/v1/batch/process?batch_size=50`, then poll `/api/v1/batch/{batch_id}/summary`. Cases and audit details are available at `/api/v1/batch/{batch_id}/cases`, `/api/v1/cases/{case_id}/full`, and `/api/v1/cases/{case_id}/audit`.
 
 Before running Phase 4 locally, apply `infra/postgres/migrations/003_execution_and_metrics.sql` to the project PostgreSQL database. Executors create only Razorpay test-mode payment links; retries are recorded as scheduled and downgrade offers as proposed, never silently charged or applied.
+
+## Deployment
+
+`render.yaml` defines the FastAPI service; set its environment variables in Render and run the three SQL migrations against its PostgreSQL database. Deploy `frontend/` to Vercel and set `NEXT_PUBLIC_API_URL` to the Render API URL. Set `ALLOWED_ORIGINS` on Render to the Vercel production URL. Never deploy Razorpay live keys: this project rejects any key ID that is not prefixed `rzp_test_`.

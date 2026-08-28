@@ -1,4 +1,8 @@
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+import logging
+
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,6 +18,14 @@ from app.services.processor import list_failed_payments, process_payment
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.1.0")
+logger = logging.getLogger("recovery_api")
+app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in settings.allowed_origins.split(",")], allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
+
+
+@app.exception_handler(Exception)
+async def unhandled_error(_: Request, error: Exception) -> JSONResponse:
+    logger.exception("Unhandled API error", exc_info=error)
+    return JSONResponse(status_code=500, content={"detail": "Unexpected server error. Check API logs."})
 
 
 class HealthResponse(BaseModel):

@@ -1,28 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Summary = { status: string; cases_analyzed: number; revenue_at_risk_paise: number; revenue_recovered_paise: number; recovery_rate: number };
 const money = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [batchId, setBatchId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("No batch selected. Start a test-mode recovery batch to populate metrics.");
   const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
   async function startBatch() {
-    setMessage("Starting batch…");
+    setMessage("Starting batch…"); setLoading(true);
     try {
       const started = await fetch(`${api}/api/v1/batch/process?batch_size=50`, { method: "POST" }).then((r) => r.json());
       const data = await fetch(`${api}/api/v1/batch/${started.batch_id}/summary`).then((r) => r.json());
-      setSummary(data); setMessage(`Batch ${data.status}`);
-    } catch { setMessage("Could not reach the recovery API."); }
+      setSummary(data); setBatchId(started.batch_id); setMessage(`Batch ${data.status}`);
+    } catch { setMessage("Could not reach the recovery API."); } finally { setLoading(false); }
   }
+  useEffect(() => {
+    if (!batchId) return;
+    const refresh = () => fetch(`${api}/api/v1/batch/${batchId}/summary`).then((r) => r.ok ? r.json() : Promise.reject()).then((data) => { setSummary(data); setMessage(`Batch ${data.status}`); }).catch(() => setMessage("Could not refresh batch status."));
+    const interval = window.setInterval(refresh, 10_000); return () => window.clearInterval(interval);
+  }, [api, batchId]);
   return (
     <main className="mx-auto max-w-5xl px-6 py-16">
       <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Razorpay · Test Mode</p>
       <h1 className="mt-3 text-4xl font-bold">AI Revenue Recovery</h1>
       <p className="mt-4 max-w-2xl text-slate-300">Recovery intelligence, bounded Claude reasoning, execution audit, and batch outcome tracking.</p>
-      <button onClick={startBatch} className="mt-6 rounded-lg bg-cyan-400 px-4 py-2 font-semibold text-slate-950">Process test-mode batch</button>
+      <button disabled={loading} onClick={startBatch} className="mt-6 rounded-lg bg-cyan-400 px-4 py-2 font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-60">{loading ? "Starting…" : "Process test-mode batch"}</button>
       <p className="mt-3 text-sm text-slate-400">{message}</p>
       <section className="mt-10 grid gap-4 sm:grid-cols-3">
         {[["Revenue at risk", summary ? money(summary.revenue_at_risk_paise) : "—"], ["Recovered", summary ? money(summary.revenue_recovered_paise) : "—"], ["Cases analyzed", summary?.cases_analyzed?.toString() ?? "0"]].map(([label, value]) => (
