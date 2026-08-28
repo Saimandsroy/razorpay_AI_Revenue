@@ -11,6 +11,7 @@ from app.schemas import FailedPaymentSummary, ProcessPaymentResponse, RejectedAl
 from app.services.diagnosis import diagnose
 from app.services.claude_client import get_claude_failure_reason, get_claude_recommendation
 from app.services.claude_validator import validate_claude_output
+from app.services.executor import execute_action, execute_stop
 from app.services.intelligence import gateway_identifier, priority_for
 from app.services.policy import evaluate_policy, recommend_action
 from app.services.scoring import CustomerContext, recovery_score
@@ -29,7 +30,7 @@ def _context_from_payments(payments: list[dict[str, Any]], failed_payment_id: st
     return CustomerContext(len(successes), len(failures), ltv_paise, max(0, days_inactive))
 
 
-async def process_payment(db: Session, client: Any, payment_id: str) -> ProcessPaymentResponse:
+async def process_payment(db: Session, client: Any, payment_id: str, batch: RecoveryBatch | None = None) -> ProcessPaymentResponse:
     existing = db.scalar(select(RecoveryCase).where(RecoveryCase.razorpay_payment_id == payment_id))
     if existing:
         raise HTTPException(409, "This payment has already been processed.")
@@ -53,9 +54,10 @@ async def process_payment(db: Session, client: Any, payment_id: str) -> ProcessP
     was_fallback = not claude_valid
     fallback_reason = "Invalid JSON" if claude_raw is not None else (get_claude_failure_reason() or "Claude API error")
 
-    batch = RecoveryBatch(name=f"single-{payment_id}", status="complete")
-    db.add(batch)
-    db.flush()
+    if batch is None:
+        batch = RecoveryBatch(name=f"single-{payment_id}", status="complete")
+        db.add(batch)
+        db.flush()
     case = RecoveryCase(
         batch_id=batch.id,
         razorpay_payment_id=payment_id,
@@ -85,8 +87,13 @@ async def process_payment(db: Session, client: Any, payment_id: str) -> ProcessP
     _audit(db, case.id, "DECISION_MADE", recommendation.reasoning, {"recommended_action": recommendation.action, "alternative_actions_rejected": [{"action": item.action, "reason": item.reason} for item in recommendation.alternatives_rejected]})
     _audit(db, case.id, "CLAUDE_REASONING_RECEIVED", "Claude explanation accepted." if claude_valid else f"Deterministic fallback used: {fallback_reason}.", {"claude_reasoning": claude_output["reasoning"] if claude_valid else None, "confidence": claude_output["confidence"] if claude_valid else None, "alternatives_rejected": claude_output["alternatives_rejected"] if claude_valid else [], "was_fallback": was_fallback, "fallback_reason": fallback_reason if was_fallback else None})
     _audit(db, case.id, "POLICY_GATE", policy.reason, {"allowed": policy.allowed})
+    execution = execute_action(client, recommendation.action, payment_id, customer_id, revenue_at_risk, policy.reason) if policy.allowed else execute_stop(policy.reason)
+    case.execution_status = execution["status"]
+    case.execution_result = execution
+    event_type = "EXECUTION_EXECUTED" if policy.allowed else "ACTION_STOPPED"
+    _audit(db, case.id, event_type, f"Action {recommendation.action} {execution['status']}.", execution)
     db.commit()
-    return ProcessPaymentResponse(case_id=case.id, diagnosis=diagnosis.category, recovery_score=score, recommended_action=recommendation.action, reasoning=recommendation.reasoning, alternative_actions_rejected=[RejectedAlternativeResponse(action=item.action, reason=item.reason) for item in recommendation.alternatives_rejected], policy_allowed=policy.allowed, policy_reason=policy.reason, audit_event_count=8, claude_reasoning=claude_output["reasoning"] if claude_valid else None, claude_confidence=claude_output["confidence"] if claude_valid else None, was_fallback=was_fallback)
+    return ProcessPaymentResponse(case_id=case.id, diagnosis=diagnosis.category, recovery_score=score, recommended_action=recommendation.action, reasoning=recommendation.reasoning, alternative_actions_rejected=[RejectedAlternativeResponse(action=item.action, reason=item.reason) for item in recommendation.alternatives_rejected], policy_allowed=policy.allowed, policy_reason=policy.reason, audit_event_count=9, claude_reasoning=claude_output["reasoning"] if claude_valid else None, claude_confidence=claude_output["confidence"] if claude_valid else None, was_fallback=was_fallback)
 
 
 def list_failed_payments(client: Any, limit: int) -> list[FailedPaymentSummary]:

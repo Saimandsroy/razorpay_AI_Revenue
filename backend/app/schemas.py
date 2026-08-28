@@ -69,3 +69,37 @@ class IntelligenceSnapshot(BaseModel):
     total_revenue_at_risk_paise: int
     expected_recovery_value_paise: int
     gateway_anomalies: list[GatewayAnomaly]
+
+
+class BatchStartResponse(BaseModel):
+    batch_id: UUID
+    status: str
+    created_at: str | None
+    cases_count: int
+
+
+class BatchSummary(BaseModel):
+    batch_id: UUID
+    status: str
+    cases_analyzed: int
+    revenue_at_risk_paise: int
+    revenue_recovered_paise: int
+    recovery_rate: float
+    by_diagnosis: dict
+    by_action: dict
+
+
+class CaseListItem(BaseModel):
+    case_id: UUID
+    customer: str | None
+    amount_paise: int
+    diagnosis: str
+    action: str | None
+    status: str
+    recovered_amount_paise: int
+
+
+class AuditTrailItem(BaseModel):
+    event_type: str
+    timestamp: str | None
+    data: dict

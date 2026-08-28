@@ -46,3 +46,9 @@ Phase 3 will optionally use `ANTHROPIC_API_KEY`, with a deterministic fallback w
 ## Optional Claude reasoning
 
 Set `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` only when Phase 3 explanation enrichment is desired. Claude can add validated reasoning and confidence, but it cannot choose the recovery action, bypass the policy gate, or execute a payment action. A five-second timeout, response validation, and deterministic fallback are always applied.
+
+## Batch execution dashboard
+
+Start a test-mode batch with `POST /api/v1/batch/process?batch_size=50`, then poll `/api/v1/batch/{batch_id}/summary`. Cases and audit details are available at `/api/v1/batch/{batch_id}/cases`, `/api/v1/cases/{case_id}/full`, and `/api/v1/cases/{case_id}/audit`.
+
+Before running Phase 4 locally, apply `infra/postgres/migrations/003_execution_and_metrics.sql` to the project PostgreSQL database. Executors create only Razorpay test-mode payment links; retries are recorded as scheduled and downgrade offers as proposed, never silently charged or applied.

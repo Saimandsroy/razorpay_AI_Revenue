@@ -27,6 +27,16 @@ class RecoveryBatch(Base):
     name: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    cases_analyzed: Mapped[int] = mapped_column(Integer, default=0)
+    revenue_at_risk_paise: Mapped[int] = mapped_column(Integer, default=0)
+    actions_executed: Mapped[int] = mapped_column(Integer, default=0)
+    stopped_by_policy: Mapped[int] = mapped_column(Integer, default=0)
+    successful_recoveries: Mapped[int] = mapped_column(Integer, default=0)
+    failed_recoveries: Mapped[int] = mapped_column(Integer, default=0)
+    pending_recoveries: Mapped[int] = mapped_column(Integer, default=0)
+    total_revenue_recovered_paise: Mapped[int] = mapped_column(Integer, default=0)
+    metrics_by_diagnosis: Mapped[dict] = mapped_column(JSONB, default=dict)
+    metrics_by_action: Mapped[dict] = mapped_column(JSONB, default=dict)
 
 
 class RecoveryCase(Base):
@@ -51,6 +61,10 @@ class RecoveryCase(Base):
     policy_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(CASE_STATUS, default="detected")
     recovered_amount_paise: Mapped[int] = mapped_column(Integer, default=0)
+    execution_status: Mapped[str | None] = mapped_column(Text, nullable=True)
+    execution_result: Mapped[dict] = mapped_column(JSONB, default=dict)
+    outcome_status: Mapped[str] = mapped_column(Text, default="pending")
+    outcome_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
