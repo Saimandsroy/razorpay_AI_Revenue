@@ -31,11 +31,11 @@ def health() -> HealthResponse:
 
 
 @app.post("/api/v1/batch/process", response_model=ProcessPaymentResponse, tags=["recovery"])
-def process_single_failed_payment(payload: ProcessPaymentRequest, db: Session = Depends(get_db)) -> ProcessPaymentResponse:
+async def process_single_failed_payment(payload: ProcessPaymentRequest, db: Session = Depends(get_db)) -> ProcessPaymentResponse:
     client = create_client(settings)
     if client is None:
         raise HTTPException(503, "Razorpay test-mode credentials are not configured.")
-    return process_payment(db, client, payload.payment_id)
+    return await process_payment(db, client, payload.payment_id)
 
 
 @app.get("/api/v1/payments/failed", response_model=list[FailedPaymentSummary], tags=["recovery"])

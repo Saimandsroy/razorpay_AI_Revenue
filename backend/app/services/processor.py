@@ -7,10 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import AuditEvent, RecoveryBatch, RecoveryCase
-from app.schemas import FailedPaymentSummary, ProcessPaymentResponse
+from app.schemas import FailedPaymentSummary, ProcessPaymentResponse, RejectedAlternativeResponse
 from app.services.diagnosis import diagnose
+from app.services.claude_client import get_claude_failure_reason, get_claude_recommendation
+from app.services.claude_validator import validate_claude_output
 from app.services.intelligence import gateway_identifier, priority_for
-from app.services.policy import choose_deterministic_action, evaluate_policy
+from app.services.policy import evaluate_policy, recommend_action
 from app.services.scoring import CustomerContext, recovery_score
 
 
@@ -27,7 +29,7 @@ def _context_from_payments(payments: list[dict[str, Any]], failed_payment_id: st
     return CustomerContext(len(successes), len(failures), ltv_paise, max(0, days_inactive))
 
 
-def process_payment(db: Session, client: Any, payment_id: str) -> ProcessPaymentResponse:
+async def process_payment(db: Session, client: Any, payment_id: str) -> ProcessPaymentResponse:
     existing = db.scalar(select(RecoveryCase).where(RecoveryCase.razorpay_payment_id == payment_id))
     if existing:
         raise HTTPException(409, "This payment has already been processed.")
@@ -40,12 +42,16 @@ def process_payment(db: Session, client: Any, payment_id: str) -> ProcessPayment
     context = _context_from_payments(payments, payment_id)
     diagnosis = diagnose(payment.get("error_code"))
     score = recovery_score(diagnosis.base_score, context)
-    action = choose_deterministic_action(diagnosis.category, context)
-    policy = evaluate_policy(action, diagnosis.category, context)
+    recommendation = recommend_action(diagnosis.category, context)
+    policy = evaluate_policy(recommendation.action, diagnosis.category, context)
     case_status = "allowed" if policy.allowed else "stopped"
     revenue_at_risk = int(payment["amount"])
     expected_recovery_value = round(revenue_at_risk * score)
     priority = priority_for(revenue_at_risk, score, policy.allowed)
+    claude_raw = await get_claude_recommendation(diagnosis.category, context, recommendation.action)
+    claude_valid, claude_output = validate_claude_output(claude_raw)
+    was_fallback = not claude_valid
+    fallback_reason = "Invalid JSON" if claude_raw is not None else (get_claude_failure_reason() or "Claude API error")
 
     batch = RecoveryBatch(name=f"single-{payment_id}", status="complete")
     db.add(batch)
@@ -64,7 +70,7 @@ def process_payment(db: Session, client: Any, payment_id: str) -> ProcessPayment
         expected_recovery_value_paise=expected_recovery_value,
         recovery_priority=priority,
         gateway_identifier=gateway_identifier(payment),
-        recommended_action=action,
+        recommended_action=recommendation.action,
         policy_allowed=policy.allowed,
         policy_reason=policy.reason,
         status=case_status,
@@ -76,10 +82,11 @@ def process_payment(db: Session, client: Any, payment_id: str) -> ProcessPayment
     _audit(db, case.id, "CONTEXT_FETCHED", "Customer payment history was retrieved.", {"successful_payments": context.successful_payments, "failed_payments": context.failed_payments, "ltv_paise": context.ltv_paise, "days_inactive": context.days_inactive})
     _audit(db, case.id, "SCORE_CALCULATED", "Deterministic recovery score calculated.", {"score": score, "base_diagnosis_score": diagnosis.base_score})
     _audit(db, case.id, "RISK_ASSESSED", "Revenue-at-risk and recovery priority calculated.", {"revenue_at_risk_paise": revenue_at_risk, "expected_recovery_value_paise": expected_recovery_value, "priority": priority, "gateway": case.gateway_identifier})
-    _audit(db, case.id, "DECISION_MADE", "Deterministic fallback action selected; AI recommendation is Phase 3.", {"recommended_action": action})
+    _audit(db, case.id, "DECISION_MADE", recommendation.reasoning, {"recommended_action": recommendation.action, "alternative_actions_rejected": [{"action": item.action, "reason": item.reason} for item in recommendation.alternatives_rejected]})
+    _audit(db, case.id, "CLAUDE_REASONING_RECEIVED", "Claude explanation accepted." if claude_valid else f"Deterministic fallback used: {fallback_reason}.", {"claude_reasoning": claude_output["reasoning"] if claude_valid else None, "confidence": claude_output["confidence"] if claude_valid else None, "alternatives_rejected": claude_output["alternatives_rejected"] if claude_valid else [], "was_fallback": was_fallback, "fallback_reason": fallback_reason if was_fallback else None})
     _audit(db, case.id, "POLICY_GATE", policy.reason, {"allowed": policy.allowed})
     db.commit()
-    return ProcessPaymentResponse(case_id=case.id, diagnosis=diagnosis.category, recovery_score=score, recommended_action=action, policy_allowed=policy.allowed, policy_reason=policy.reason, audit_event_count=7)
+    return ProcessPaymentResponse(case_id=case.id, diagnosis=diagnosis.category, recovery_score=score, recommended_action=recommendation.action, reasoning=recommendation.reasoning, alternative_actions_rejected=[RejectedAlternativeResponse(action=item.action, reason=item.reason) for item in recommendation.alternatives_rejected], policy_allowed=policy.allowed, policy_reason=policy.reason, audit_event_count=8, claude_reasoning=claude_output["reasoning"] if claude_valid else None, claude_confidence=claude_output["confidence"] if claude_valid else None, was_fallback=was_fallback)
 
 
 def list_failed_payments(client: Any, limit: int) -> list[FailedPaymentSummary]:

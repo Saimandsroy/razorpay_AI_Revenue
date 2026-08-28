@@ -7,14 +7,24 @@ class ProcessPaymentRequest(BaseModel):
     payment_id: str = Field(min_length=3, examples=["pay_test_payment_id"])
 
 
+class RejectedAlternativeResponse(BaseModel):
+    action: str
+    reason: str
+
+
 class ProcessPaymentResponse(BaseModel):
     case_id: UUID
     diagnosis: str
     recovery_score: float
     recommended_action: str
+    reasoning: str
+    alternative_actions_rejected: list[RejectedAlternativeResponse]
     policy_allowed: bool
     policy_reason: str
     audit_event_count: int
+    claude_reasoning: str | None
+    claude_confidence: float | None
+    was_fallback: bool
 
 
 class FailedPaymentSummary(BaseModel):
@@ -59,4 +69,3 @@ class IntelligenceSnapshot(BaseModel):
     total_revenue_at_risk_paise: int
     expected_recovery_value_paise: int
     gateway_anomalies: list[GatewayAnomaly]
-

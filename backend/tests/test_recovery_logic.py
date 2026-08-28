@@ -1,5 +1,5 @@
 from app.services.diagnosis import diagnose
-from app.services.policy import choose_deterministic_action, evaluate_policy
+from app.services.policy import choose_deterministic_action, evaluate_policy, recommend_action
 from app.services.processor import list_failed_payments
 from app.services.intelligence import build_intelligence_snapshot, detect_gateway_anomalies
 from app.services.scoring import CustomerContext, recovery_score
@@ -12,6 +12,16 @@ def test_card_expired_is_diagnosed_and_never_retried() -> None:
     assert diagnosis.category == "card_expired"
     assert choose_deterministic_action(diagnosis.category, context) == "send_card_update_link"
     assert evaluate_policy("retry", diagnosis.category, context).allowed is False
+
+
+def test_high_value_card_expiry_has_contextual_reasoning_and_rejections() -> None:
+    context = CustomerContext(8, 2, 1_800_000, 3)
+
+    recommendation = recommend_action("card_expired", context)
+
+    assert recommendation.action == "send_card_update_link"
+    assert "high lifetime value" in recommendation.reasoning
+    assert {item.action for item in recommendation.alternatives_rejected} == {"retry", "send_downgrade_offer"}
 
 
 def test_weighted_recovery_score_is_bounded() -> None:

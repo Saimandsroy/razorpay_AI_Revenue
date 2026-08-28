@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://recovery:recovery@localhost:5433/recovery"
     razorpay_key_id: str | None = None
     razorpay_key_secret: str | None = None
+    anthropic_api_key: str | None = None
+    claude_model: str | None = None
 
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
 

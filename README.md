@@ -42,3 +42,7 @@ Open `http://localhost:3000/dashboard`; API health is at `http://localhost:8000/
 No secret is needed to run the dashboard shell or API health check. Phase 2 needs Razorpay **test-mode** `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. Keep them only in the uncommitted `.env` file; never paste live-mode keys.
 
 Phase 3 will optionally use `ANTHROPIC_API_KEY`, with a deterministic fallback when unavailable.
+
+## Optional Claude reasoning
+
+Set `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` only when Phase 3 explanation enrichment is desired. Claude can add validated reasoning and confidence, but it cannot choose the recovery action, bypass the policy gate, or execute a payment action. A five-second timeout, response validation, and deterministic fallback are always applied.
