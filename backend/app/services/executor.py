@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+import os
 from typing import Any
 
 
@@ -32,6 +33,8 @@ def execute_stop(reason: str) -> dict[str, Any]:
 
 def execute_action(client: Any, action: str, payment_id: str, customer_id: str | None, amount: int, policy_reason: str) -> dict[str, Any]:
     try:
+        if os.getenv("EXECUTOR_SIMULATE_FAILURE") == "1":
+            raise RuntimeError("Simulated Razorpay execution error")
         if action == "send_card_update_link":
             return execute_send_card_link(client, customer_id, payment_id, amount)
         if action == "send_payment_plan":

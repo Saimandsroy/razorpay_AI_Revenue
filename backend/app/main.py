@@ -77,7 +77,8 @@ async def start_batch(background_tasks: BackgroundTasks, batch_size: int = 50, d
 def batch_summary(batch_id: str, db: Session = Depends(get_db)) -> BatchSummary:
     batch = db.get(RecoveryBatch, batch_id)
     if not batch: raise HTTPException(404, "Batch not found")
-    return BatchSummary(batch_id=batch.id, status=batch.status, cases_analyzed=batch.cases_analyzed, revenue_at_risk_paise=batch.revenue_at_risk_paise, revenue_recovered_paise=batch.total_revenue_recovered_paise, recovery_rate=round(batch.successful_recoveries / batch.cases_analyzed, 3) if batch.cases_analyzed else 0, by_diagnosis=batch.metrics_by_diagnosis, by_action=batch.metrics_by_action)
+    rate = batch.total_revenue_recovered_paise / batch.revenue_at_risk_paise if batch.revenue_at_risk_paise else 0
+    return BatchSummary(batch_id=batch.id, status=batch.status, cases_analyzed=batch.cases_analyzed, revenue_at_risk_paise=batch.revenue_at_risk_paise, revenue_recovered_paise=batch.total_revenue_recovered_paise, recovery_rate=round(rate, 3), by_diagnosis=batch.metrics_by_diagnosis, by_action=batch.metrics_by_action)
 
 
 @app.get("/api/v1/batch/{batch_id}/cases", response_model=list[CaseListItem], tags=["batch"])

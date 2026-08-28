@@ -43,15 +43,6 @@ def evaluate_policy(action: str, diagnosis: str, context: CustomerContext, gatew
 def recommend_action(diagnosis: str, context: CustomerContext) -> ActionRecommendation:
     """Context-aware recommendation with explainable, deterministic trade-offs."""
     if diagnosis == "card_expired":
-        if context.ltv_paise > 1_500_000 and context.history_score > 0.70:
-            return ActionRecommendation(
-                "send_card_update_link",
-                "Customer has high lifetime value and a strong successful-payment history; asking for updated card details is justified to recover the full amount.",
-                [
-                    RejectedAlternative("retry", "The card is expired, so retrying the same payment method is expected to fail and wastes customer goodwill."),
-                    RejectedAlternative("send_downgrade_offer", "The customer is valuable and engaged; recover the full plan before offering a lower-value alternative."),
-                ],
-            )
         if context.days_inactive > 60:
             return ActionRecommendation(
                 "send_downgrade_offer",
@@ -59,6 +50,15 @@ def recommend_action(diagnosis: str, context: CustomerContext) -> ActionRecommen
                 [
                     RejectedAlternative("retry", "The card is expired, so the same payment method cannot succeed."),
                     RejectedAlternative("send_card_update_link", "A card update requires high customer effort and is unlikely from a churned customer."),
+                ],
+            )
+        if context.ltv_paise > 1_500_000 and context.history_score > 0.70:
+            return ActionRecommendation(
+                "send_card_update_link",
+                "Customer has high lifetime value and a strong successful-payment history; asking for updated card details is justified to recover the full amount.",
+                [
+                    RejectedAlternative("retry", "The card is expired, so retrying the same payment method is expected to fail and wastes customer goodwill."),
+                    RejectedAlternative("send_downgrade_offer", "The customer is valuable and engaged; recover the full plan before offering a lower-value alternative."),
                 ],
             )
         return ActionRecommendation(

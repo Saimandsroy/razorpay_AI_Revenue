@@ -1,4 +1,6 @@
 import json
+import os
+import asyncio
 from contextvars import ContextVar
 from typing import Any
 
@@ -23,6 +25,16 @@ async def get_claude_recommendation(
     """Return raw JSON explanation from Claude, or None on configuration/API/timeout failure."""
     settings = get_settings()
     _failure_reason.set(None)
+    simulation = os.getenv("CLAUDE_SIMULATE_FAILURE")
+    if simulation == "invalid_json":
+        return "{invalid-json"
+    if simulation == "timeout":
+        await asyncio.sleep(5.0)
+        _failure_reason.set("Timeout")
+        return None
+    if simulation == "api_error":
+        _failure_reason.set("Claude API error")
+        return None
     if not settings.anthropic_api_key or not settings.claude_model:
         _failure_reason.set("Claude not configured")
         return None

@@ -24,6 +24,11 @@ def test_high_value_card_expiry_has_contextual_reasoning_and_rejections() -> Non
     assert {item.action for item in recommendation.alternatives_rejected} == {"retry", "send_downgrade_offer"}
 
 
+def test_churn_signal_takes_precedence_over_high_ltv() -> None:
+    recommendation = recommend_action("card_expired", CustomerContext(9, 1, 1_800_000, 61))
+    assert recommendation.action == "send_downgrade_offer"
+
+
 def test_weighted_recovery_score_is_bounded() -> None:
     context = CustomerContext(8, 2, 1_800_000, 3)
 

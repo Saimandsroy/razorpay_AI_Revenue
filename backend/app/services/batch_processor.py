@@ -26,7 +26,7 @@ def calculate_metrics(batch: RecoveryBatch, cases: list[RecoveryCase]) -> None:
     batch.stopped_by_policy = sum(not bool(case.policy_allowed) for case in cases)
     batch.successful_recoveries = sum(case.outcome_status == "success" for case in cases)
     batch.failed_recoveries = sum(case.outcome_status == "failed" for case in cases)
-    batch.pending_recoveries = sum(case.outcome_status == "pending" for case in cases)
+    batch.pending_recoveries = sum(case.outcome_status == "pending" and case.execution_status in {"executed", "scheduled", "proposed"} for case in cases)
     batch.total_revenue_recovered_paise = sum(case.recovered_amount_paise for case in cases)
     batch.metrics_by_diagnosis, batch.metrics_by_action = dict(by_diagnosis), dict(by_action)
 

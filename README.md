@@ -56,3 +56,7 @@ Before running Phase 4 locally, apply `infra/postgres/migrations/003_execution_a
 ## Deployment
 
 `render.yaml` defines the FastAPI service; set its environment variables in Render and run the three SQL migrations against its PostgreSQL database. Deploy `frontend/` to Vercel and set `NEXT_PUBLIC_API_URL` to the Render API URL. Set `ALLOWED_ORIGINS` on Render to the Vercel production URL. Never deploy Razorpay live keys: this project rejects any key ID that is not prefixed `rzp_test_`.
+
+## Demo verification
+
+Run `cd backend && .venv/bin/pytest -q` for the full suite. `scripts/e2e_dry_run.py` prints five complete synthetic audit trails without creating a Razorpay payment; it uses real Claude only when both Claude environment variables are set, otherwise verifies the deterministic fallback. Run `scripts/numbers_integrity_check.py` to reconcile a deterministic ten-case batch fixture. The temporary verification switches are `CLAUDE_SIMULATE_FAILURE=invalid_json|api_error|timeout` and `EXECUTOR_SIMULATE_FAILURE=1`.

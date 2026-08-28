@@ -31,6 +31,6 @@ async def track_outcome(db: Session, client: Any, case: RecoveryCase, timeout_se
         await asyncio.sleep(min(poll_seconds, max(0, deadline - asyncio.get_running_loop().time())))
     case.outcome_status = outcome
     case.outcome_checked_at = datetime.now(UTC)
-    db.add(AuditEvent(case_id=case.id, event_type="OUTCOME_TRACKED", message=f"Recovery outcome: {outcome}.", metadata_={"outcome": outcome, "recovered_amount_paise": case.recovered_amount_paise}))
+    db.add(AuditEvent(case_id=case.id, event_type="OUTCOME_TRACKED", message=f"Recovery outcome: {outcome}.", metadata_={"outcome": outcome, "recovered_amount_paise": case.recovered_amount_paise or 0}))
     db.commit()
     return outcome
