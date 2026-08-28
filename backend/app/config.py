@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     razorpay_key_secret: str | None = None
     anthropic_api_key: str | None = None
     claude_model: str | None = None
+    claude_timeout_seconds: float = 2.5
     allowed_origins: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")

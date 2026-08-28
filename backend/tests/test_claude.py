@@ -16,7 +16,7 @@ VALID_OUTPUT = '{"reasoning":"The customer has reliable payment history.","confi
 
 
 def _configured_settings() -> SimpleNamespace:
-    return SimpleNamespace(anthropic_api_key="test-key", claude_model="test-model")
+    return SimpleNamespace(anthropic_api_key="test-key", claude_model="test-model", claude_timeout_seconds=2.5)
 
 
 def test_validator_accepts_valid_claude_json() -> None:

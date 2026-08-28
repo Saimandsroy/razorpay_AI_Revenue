@@ -29,7 +29,7 @@ async def get_claude_recommendation(
     if simulation == "invalid_json":
         return "{invalid-json"
     if simulation == "timeout":
-        await asyncio.sleep(5.0)
+        await asyncio.sleep(settings.claude_timeout_seconds)
         _failure_reason.set("Timeout")
         return None
     if simulation == "api_error":
@@ -49,9 +49,9 @@ async def get_claude_recommendation(
     payload = {"model": settings.claude_model, "max_tokens": 400, "messages": [{"role": "user", "content": json.dumps(prompt)}]}
     headers = {"x-api-key": settings.anthropic_api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
     owns_client = http_client is None
-    client = http_client or httpx.AsyncClient(timeout=5.0)
+    client = http_client or httpx.AsyncClient(timeout=settings.claude_timeout_seconds)
     try:
-        response = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=payload, timeout=5.0)
+        response = await client.post("https://api.anthropic.com/v1/messages", headers=headers, json=payload, timeout=settings.claude_timeout_seconds)
         response.raise_for_status()
         content = response.json().get("content", [])
         text = next((item.get("text") for item in content if item.get("type") == "text"), None)
