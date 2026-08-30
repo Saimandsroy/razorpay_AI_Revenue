@@ -1,62 +1,40 @@
 # Razorpay AI Revenue Recovery
 
-A test-mode-only revenue recovery engine that diagnoses failed payments, recommends an appropriate recovery action, enforces deterministic safety policy, and makes every decision auditable.
+Razorpay AI Revenue Recovery is a test-mode-only system that turns failed payments into safe, auditable recovery cases. It diagnoses the failure, scores recovery likelihood from customer context, selects a deterministic action, applies policy safeguards, and measures the outcome in PostgreSQL. See [the five-minute demo script](DEMO_SCRIPT.md) and [architecture guide](ARCHITECTURE_DIAGRAM.md).
 
-## Project status
+## Quick start
 
-Phase 1 — foundation in progress. The repository contains a FastAPI service, a Next.js 14 dashboard shell, PostgreSQL schema, Docker database, and environment templates. Phase 2 will add the detection-to-audit pipeline.
-
-## Architecture
-
-```
-frontend/     Next.js 14 + TypeScript + Tailwind dashboard
-backend/      FastAPI recovery API
-infra/postgres/ PostgreSQL initialization schema
+```bash
+docker compose up -d db
+cd backend && .venv/bin/python -m uvicorn app.main:app --reload --host localhost --port 8000
+cd frontend && npm run dev -- --hostname localhost --port 3000
 ```
 
-The production workflow is: detect → diagnose → contextualize → score → decide → policy gate → execute → track → aggregate. Razorpay calls remain sandbox/test-mode only.
+Open `http://localhost:3000/dashboard`. The API health check is `http://localhost:8000/health`. Use only Razorpay test-mode credentials in `.env`.
 
-## Local setup
+## What it does
 
-1. Copy `.env.example` to `.env` and fill in the values you have.
-2. Start PostgreSQL: `docker compose up -d db`
-3. Backend:
-   ```bash
-   cd backend
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -e '.[dev]'
-   uvicorn app.main:app --reload --port 8000
-   ```
-4. Frontend:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+- Detects eligible failed Razorpay test-mode payments.
+- Maps gateway errors to root-cause diagnoses.
+- Calculates deterministic recovery probability and revenue at risk.
+- Uses customer history, LTV, activity, and churn signals to recommend recovery actions.
+- Enforces policy limits before any action executes.
+- Tracks outcomes and measures recovered revenue.
+- Records every step in an auditable PostgreSQL timeline.
 
-Open `http://localhost:3000/dashboard`; API health is at `http://localhost:8000/health`.
+## Technology
 
-## Credentials
+- Backend: Python, FastAPI, SQLAlchemy, PostgreSQL, optional Claude reasoning.
+- Frontend: Next.js, React, TypeScript, Tailwind CSS, Recharts.
+- Payments: Razorpay Test Mode APIs only.
 
-No secret is needed to run the dashboard shell or API health check. Phase 2 needs Razorpay **test-mode** `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`. Keep them only in the uncommitted `.env` file; never paste live-mode keys.
+## Key features
 
-Phase 3 will optionally use `ANTHROPIC_API_KEY`, with a deterministic fallback when unavailable.
+- Root-cause diagnosis instead of indiscriminate retries.
+- Context-aware action selection and rejected-alternative reasoning.
+- Deterministic policy enforcement; Claude is explanation-only with a validated fallback.
+- Complete audit trail and batch-level recovery metrics.
 
-## Optional Claude reasoning
+## Demo
 
-Set `ANTHROPIC_API_KEY` and `CLAUDE_MODEL` only when Phase 3 explanation enrichment is desired. Claude can add validated reasoning and confidence, but it cannot choose the recovery action, bypass the policy gate, or execute a payment action. A five-second timeout, response validation, and deterministic fallback are always applied.
-
-## Batch execution dashboard
-
-Start a test-mode batch with `POST /api/v1/batch/process?batch_size=50`, then poll `/api/v1/batch/{batch_id}/summary`. Cases and audit details are available at `/api/v1/batch/{batch_id}/cases`, `/api/v1/cases/{case_id}/full`, and `/api/v1/cases/{case_id}/audit`.
-
-Before running Phase 4 locally, apply `infra/postgres/migrations/003_execution_and_metrics.sql` to the project PostgreSQL database. Executors create only Razorpay test-mode payment links; retries are recorded as scheduled and downgrade offers as proposed, never silently charged or applied.
-
-## Deployment
-
-`render.yaml` defines the FastAPI service; set its environment variables in Render and run the three SQL migrations against its PostgreSQL database. Deploy `frontend/` to Vercel and set `NEXT_PUBLIC_API_URL` to the Render API URL. Set `ALLOWED_ORIGINS` on Render to the Vercel production URL. Never deploy Razorpay live keys: this project rejects any key ID that is not prefixed `rzp_test_`.
-
-## Demo verification
-
-Run `cd backend && .venv/bin/pytest -q` for the full suite. `scripts/e2e_dry_run.py` prints five complete synthetic audit trails without creating a Razorpay payment; it uses real Claude only when both Claude environment variables are set, otherwise verifies the deterministic fallback. Run `scripts/numbers_integrity_check.py` to reconcile a deterministic ten-case batch fixture. The temporary verification switches are `CLAUDE_SIMULATE_FAILURE=invalid_json|api_error|timeout` and `EXECUTOR_SIMULATE_FAILURE=1`.
+From the dashboard, select **Process 12 test-mode payments**, wait for the batch status to complete, then select a case to inspect its decision and audit timeline. If the Razorpay test account contains no eligible failed payments, the dashboard honestly presents its empty state. Full presenter guidance is in [DEMO_SCRIPT.md](DEMO_SCRIPT.md).
