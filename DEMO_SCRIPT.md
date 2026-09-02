@@ -2,7 +2,7 @@
 
 ## System Overview (30 seconds)
 
-Razorpay AI Revenue Recovery turns failed test-mode payments into safe, prioritized recovery cases. It identifies the root cause, combines customer-payment signals into a deterministic recovery score, and selects a context-aware action. Claude can explain the decision, but a deterministic policy gate remains in control of what can be executed.
+Razorpay AI Revenue Recovery turns failed test-mode payments into safe, prioritized recovery cases. It identifies the root cause, combines customer-payment signals into a deterministic recovery score, and selects a context-aware action. Gemini can explain the decision, but a deterministic policy gate remains in control of what can be executed.
 
 ## Demo Flow (4.5 minutes)
 
@@ -31,7 +31,7 @@ Open `http://localhost:3000/dashboard`.
 
 - Root-cause diagnosis means the system does more than blindly retry.
 - Customer LTV, success history, inactivity, and churn signal influence the recommendation.
-- Claude provides optional reasoning only; it cannot override policy or execute financial actions.
+- Gemini provides optional reasoning only; it cannot override policy or execute financial actions.
 - PostgreSQL audit events make each decision inspectable and measurable.
 
 ## If Data Is Empty (Backup Script)

@@ -1,7 +1,7 @@
 import type { AuditEvent } from "../../types/api";
 import { Card, formatTime, labelize } from "./ui";
 
-const icons: Record<string, string> = { DETECTED: "◎", DIAGNOSED: "⌕", SCORED: "◈", CLAUDE_REASONING_RECEIVED: "✦", POLICY_GATE: "⊞", ACTION_EXECUTED: "✓", ACTION_STOPPED: "⊘", OUTCOME_TRACKED: "●" };
+const icons: Record<string, string> = { DETECTED: "◎", DIAGNOSED: "⌕", SCORED: "◈", GEMINI_REASONING_RECEIVED: "✦", POLICY_GATE: "⊞", ACTION_EXECUTED: "✓", ACTION_STOPPED: "⊘", OUTCOME_TRACKED: "●" };
 
 export function AuditTimeline({ events }: { events: AuditEvent[] }) {
   const chronological = [...events].sort((a, b) => (a.timestamp ?? "").localeCompare(b.timestamp ?? ""));

@@ -21,6 +21,10 @@ export function startBatch(batchSize = 12) {
   return request<BatchStart>(`/api/v1/batch/process?batch_size=${batchSize}`, { method: "POST" });
 }
 
+export function startDemoBatch() {
+  return request<BatchStart>("/api/v1/demo/batch", { method: "POST" });
+}
+
 export function fetchBatchSummary(batchId: string) {
   return request<BatchSummary>(`/api/v1/batch/${batchId}/summary`);
 }

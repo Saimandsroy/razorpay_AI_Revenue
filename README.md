@@ -24,7 +24,7 @@ Open `http://localhost:3000/dashboard`. The API health check is `http://localhos
 
 ## Technology
 
-- Backend: Python, FastAPI, SQLAlchemy, PostgreSQL, optional Claude reasoning.
+- Backend: Python, FastAPI, SQLAlchemy, PostgreSQL, optional Gemini reasoning.
 - Frontend: Next.js, React, TypeScript, Tailwind CSS, Recharts.
 - Payments: Razorpay Test Mode APIs only.
 
@@ -32,7 +32,7 @@ Open `http://localhost:3000/dashboard`. The API health check is `http://localhos
 
 - Root-cause diagnosis instead of indiscriminate retries.
 - Context-aware action selection and rejected-alternative reasoning.
-- Deterministic policy enforcement; Claude is explanation-only with a validated fallback.
+- Deterministic policy enforcement; Gemini is explanation-only with a validated fallback.
 - Complete audit trail and batch-level recovery metrics.
 
 ## Demo

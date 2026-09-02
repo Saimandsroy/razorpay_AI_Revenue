@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     claude_model: str | None = None
     claude_timeout_seconds: float = 2.5
+    gemini_api_key: str | None = None
+    gemini_model: str | None = None
+    gemini_timeout_seconds: float = 2.5
     allowed_origins: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")

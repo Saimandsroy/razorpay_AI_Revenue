@@ -4,7 +4,7 @@
 
 - Docker Desktop running.
 - PostgreSQL started with the project Compose file (host port `5433`).
-- A `.env` file containing Razorpay **test-mode** credentials. Claude is optional.
+- A `.env` file containing Razorpay **test-mode** credentials. Gemini is optional.
 
 ## Start the System
 

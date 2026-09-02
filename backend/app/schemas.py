@@ -22,8 +22,8 @@ class ProcessPaymentResponse(BaseModel):
     policy_allowed: bool
     policy_reason: str
     audit_event_count: int
-    claude_reasoning: str | None
-    claude_confidence: float | None
+    gemini_reasoning: str | None
+    gemini_confidence: float | None
     was_fallback: bool
 
 

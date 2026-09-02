@@ -160,7 +160,7 @@ async def main() -> int:
             ("DETECTED", "DETECTED" in event_types),
             ("DIAGNOSED", "DIAGNOSED" in event_types),
             ("SCORED", "SCORED" in event_types),
-            ("CLAUDE_REASONING_RECEIVED", "CLAUDE_REASONING_RECEIVED" in event_types),
+            ("GEMINI_REASONING_RECEIVED", "GEMINI_REASONING_RECEIVED" in event_types),
             ("POLICY_GATE", "POLICY_GATE" in event_types),
             ("ACTION_EXECUTED/ACTION_STOPPED", bool({"ACTION_EXECUTED", "ACTION_STOPPED"} & set(event_types))),
         ]

@@ -18,7 +18,7 @@ Razorpay Test Mode failed payment
  Context-aware deterministic recommendation
               |
        +------v-------+
-       | Claude (opt.)|  explanation/confidence only
+       | Gemini (opt.)| explanation/confidence only
        +------+-------+
               |
               v
@@ -43,7 +43,7 @@ Razorpay Test Mode failed payment
 - Detection fetches failed Razorpay test-mode payments.
 - Diagnosis maps error codes to actionable root causes.
 - Scoring calculates deterministic recovery likelihood.
-- Claude is an optional bounded reasoning layer with validation and fallback.
+- Gemini is an optional bounded reasoning layer with validation and fallback.
 - Policy applies retry, churn, dispute, and mandate safeguards.
 - Executor records safe, limited actions; outcome tracking measures results.
 
@@ -67,4 +67,4 @@ Razorpay Test Mode failed payment
 4. Deterministic policy enforcement.
 5. Razorpay Test Mode integration.
 6. Complete auditability and recovery metrics.
-7. Optional Claude reasoning with deterministic fallback.
+7. Optional Gemini reasoning with deterministic fallback.

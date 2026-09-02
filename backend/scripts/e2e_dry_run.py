@@ -1,7 +1,7 @@
 """Offline-safe verification of the production pipeline using Razorpay test-mode-shaped fixtures.
 
-It never creates a Razorpay payment or charges a customer. If ANTHROPIC_API_KEY and
-CLAUDE_MODEL are configured, the real bounded Claude client is used; otherwise its
+It never creates a Razorpay payment or charges a customer. If GEMINI_API_KEY and
+GEMINI_MODEL are configured, the real bounded Gemini client is used; otherwise its
 production fallback path is audited explicitly.
 """
 import asyncio
@@ -19,7 +19,7 @@ from app.models import AuditEvent, RecoveryBatch, RecoveryCase
 from app.services.outcome_tracker import track_outcome
 from app.services.processor import process_payment
 
-EXPECTED = ["DETECTED", "DIAGNOSED", "SCORED", "CLAUDE_REASONING_RECEIVED", "POLICY_GATE"]
+EXPECTED = ["DETECTED", "DIAGNOSED", "SCORED", "GEMINI_REASONING_RECEIVED", "POLICY_GATE"]
 
 
 class DryDb:
@@ -65,7 +65,7 @@ async def main() -> None:
     histories = {"high": [payments["pay_card_high"], success("high", now)], "churn": [payments["pay_card_churn"], success("churn", old)], "funds": [payments["pay_funds"], success("funds", now, 300_000)], "mandate": [payments["pay_mandate"], success("mandate", now, 300_000)], "blocked": [payments["pay_policy_block"], success("blocked", old)]}
     payment_api = PaymentApi(payments, histories, {"pay_card_high"})
     client = SimpleNamespace(payment=payment_api, payment_link=SimpleNamespace(create=payment_link_create))
-    print(f"TEST_MODE_KEY={'configured' if settings.razorpay_key_id else 'not configured'} CLAUDE={'real' if settings.anthropic_api_key and settings.claude_model else 'fallback'}")
+    print(f"TEST_MODE_KEY={'configured' if settings.razorpay_key_id else 'not configured'} GEMINI={'real' if settings.gemini_api_key and settings.gemini_model else 'fallback'}")
     for identifier in payments:
         db = DryDb(); result = await process_payment(db, client, identifier)
         case = db.get(RecoveryCase, result.case_id)

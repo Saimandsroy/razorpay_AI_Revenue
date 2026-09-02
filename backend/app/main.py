@@ -13,6 +13,7 @@ from app.models import AuditEvent, RecoveryBatch, RecoveryCase
 from app.razorpay_client import create_client
 from app.schemas import AuditTrailItem, BatchStartResponse, BatchSummary, CaseListItem, FailedPaymentSummary, IntelligenceSnapshot, ProcessPaymentRequest, ProcessPaymentResponse
 from app.services.batch_processor import process_batch
+from app.services.demo_batch import clear_demo_batches, process_demo_batch
 from app.services.intelligence import build_intelligence_snapshot
 from app.services.processor import list_failed_payments, process_payment
 
@@ -71,6 +72,22 @@ async def start_batch(background_tasks: BackgroundTasks, batch_size: int = 50, d
     db.add(batch); db.commit(); db.refresh(batch)
     background_tasks.add_task(_run_batch, batch.id)
     return BatchStartResponse(batch_id=batch.id, status=batch.status, created_at=batch.created_at.isoformat() if batch.created_at else None, cases_count=0)
+
+
+@app.post("/api/v1/demo/batch", response_model=BatchStartResponse, tags=["demo"])
+async def start_demo_batch(db: Session = Depends(get_db)) -> BatchStartResponse:
+    """Development-only fixtures; no Razorpay SDK/API calls are made here."""
+    if settings.environment.lower() == "production":
+        raise HTTPException(404, "Demo fixtures are disabled in production.")
+    batch = await process_demo_batch(db)
+    return BatchStartResponse(batch_id=batch.id, status=batch.status, created_at=batch.created_at.isoformat() if batch.created_at else None, cases_count=batch.cases_analyzed)
+
+
+@app.delete("/api/v1/demo/batches", tags=["demo"])
+def clear_demo_data(db: Session = Depends(get_db)) -> dict[str, int]:
+    if settings.environment.lower() == "production":
+        raise HTTPException(404, "Demo fixtures are disabled in production.")
+    return {"deleted_batches": clear_demo_batches(db)}
 
 
 @app.get("/api/v1/batch/{batch_id}/summary", response_model=BatchSummary, tags=["batch"])
