@@ -20,7 +20,7 @@ def test_stop_makes_no_gateway_call() -> None:
 
 
 def test_outcome_tracker_records_success() -> None:
-    events = []; db = SimpleNamespace(add=events.append, commit=lambda: None)
+    events = []; db = SimpleNamespace(add=events.append, commit=lambda: None, scalar=lambda _: None, scalars=lambda _: [])
     case = SimpleNamespace(id="case_1", razorpay_payment_id="pay_1", execution_status="executed", amount_paise=500, recovered_amount_paise=0, status="allowed", outcome_status="pending", outcome_checked_at=None)
     client = SimpleNamespace(payment=SimpleNamespace(fetch=lambda _: {"status": "captured"}))
     assert asyncio.run(track_outcome(db, client, case, timeout_seconds=0)) == "success"
@@ -28,7 +28,7 @@ def test_outcome_tracker_records_success() -> None:
 
 
 def test_outcome_tracker_keeps_pending_at_timeout() -> None:
-    db = SimpleNamespace(add=lambda _: None, commit=lambda: None)
+    db = SimpleNamespace(add=lambda _: None, commit=lambda: None, scalar=lambda _: None, scalars=lambda _: [])
     case = SimpleNamespace(id="case_1", razorpay_payment_id="pay_1", execution_status="executed", amount_paise=500, recovered_amount_paise=0, status="allowed", outcome_status="pending", outcome_checked_at=None)
     client = SimpleNamespace(payment=SimpleNamespace(fetch=lambda _: {"status": "failed"}))
     assert asyncio.run(track_outcome(db, client, case, timeout_seconds=0)) == "pending"

@@ -83,11 +83,12 @@ async def process_demo_batch(db: Session) -> RecoveryBatch:
     db.refresh(batch)
     cases: list[RecoveryCase] = []
     for payment_id in client.demo_payment_ids:
-        response = await process_payment(db, client, payment_id, batch)
-        case = db.get(RecoveryCase, response.case_id)
-        if case:
-            await track_outcome(db, client, case, timeout_seconds=0)
-            cases.append(case)
+        response, was_duplicate = await process_payment(db, client, payment_id, batch)
+        if not was_duplicate:
+            case = db.get(RecoveryCase, response.case_id)
+            if case:
+                await track_outcome(db, client, case, timeout_seconds=0)
+                cases.append(case)
     calculate_metrics(batch, cases)
     batch.status = "complete"
     db.commit()

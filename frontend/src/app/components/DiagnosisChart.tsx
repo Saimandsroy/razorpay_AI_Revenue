@@ -1,10 +1,62 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, Legend } from "recharts";
 import type { BreakdownMetric } from "../../types/api";
 import { Card, labelize, money } from "./ui";
 
 export function DiagnosisChart({ data }: { data?: Record<string, BreakdownMetric> }) {
-  const chartData = Object.entries(data ?? {}).map(([diagnosis, metric]) => ({ name: labelize(diagnosis), attempts: metric.attempts, successful: metric.success, recovered: (metric.recovered_paise ?? 0) / 100 }));
-  return <Card className="p-6"><h2 className="text-lg font-semibold">Recovery by diagnosis</h2><p className="mt-1 text-sm text-slate-400">Attempts, successful outcomes, and recovered revenue.</p>{chartData.length ? <div className="mt-5 h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} margin={{ left: 8 }}><CartesianGrid stroke="#1e293b" vertical={false} /><XAxis dataKey="name" tick={{ fill: "#94a3b8", fontSize: 11 }} /><YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} /><Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #334155", borderRadius: 12 }} formatter={(value, name) => name === "recovered" ? money(Number(value) * 100) : value} /><Legend /><Bar dataKey="attempts" fill="#38bdf8" radius={[4, 4, 0, 0]} /><Bar dataKey="successful" fill="#34d399" radius={[4, 4, 0, 0]} /><Bar dataKey="recovered" fill="#a78bfa" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div> : <p className="mt-8 text-sm text-slate-400">No diagnosis metrics are available for this batch.</p>}</Card>;
+  // Exclude the _batch_stats key from the chart data
+  const chartData = Object.entries(data ?? {})
+    .filter(([diagnosis]) => diagnosis !== "_batch_stats")
+    .map(([diagnosis, metric]) => ({
+      name: labelize(diagnosis),
+      value: (metric.recovered_paise ?? 0) / 100,
+      attempts: metric.attempts
+    }))
+    .filter(item => item.value > 0 || item.attempts > 0);
+
+  const COLORS = ['#2f81f7', '#d29922', '#f85149', '#3fb950', '#8957e5'];
+
+  return (
+    <Card className="h-full flex flex-col justify-between">
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-secondary mb-1">Leakage Category Breakdown</h2>
+        <p className="text-xs text-tertiary">Distribution of revenue events</p>
+      </div>
+
+      {chartData.length ? (
+        <div className="mt-8 h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartData}
+                innerRadius={60}
+                outerRadius={90}
+                paddingAngle={2}
+                dataKey="attempts"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{ background: "#111418", border: "1px solid #21262d", borderRadius: "4px", fontSize: "12px" }}
+                itemStyle={{ color: "#e6edf3" }}
+              />
+              <Legend
+                verticalAlign="bottom"
+                height={36}
+                iconType="circle"
+                wrapperStyle={{ fontSize: "11px", color: "#848d97" }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <div className="mt-8 flex h-64 items-center justify-center text-xs text-tertiary font-mono">
+          NO DATA AVAILABLE
+        </div>
+      )}
+    </Card>
+  );
 }

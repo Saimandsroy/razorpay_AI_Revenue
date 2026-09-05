@@ -35,27 +35,9 @@ def get_gemini_failure_reason() -> str | None:
 
 def _failure_for(error: Exception) -> str:
     status = getattr(error, "status_code", None) or getattr(error, "code", None)
-    error_text = str(error).lower()
-
-    if status == 429 or "429" in error_text or "rate limit" in error_text:
+    if status == 429 or "429" in str(error) or "rate limit" in str(error).lower():
         return "Rate limited"
-
-    if status == 503 or "503" in error_text or "unavailable" in error_text:
-        return "Gemini temporarily unavailable"
-
-    return "Gemini API error"
-
-
-async def get_gemini_recommendation(
-    diagnosis: str,
-    customer_context: CustomerContext,
-    recovery_score: float,
-    deterministic_action: str,
-    client: Any | None = None,
-) -> str | None:
-    """Return a structured Gemini explanation, or None with a safe failure reason.
-
-    Gemini never receives authority to choose an action. The caller uses only
+    return "Gem    Gemini never receives authority to choose an action. The caller uses only
     the validated explanation fields and retains the deterministic decision.
     """
     settings = get_settings()

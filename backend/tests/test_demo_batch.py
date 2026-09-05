@@ -12,6 +12,9 @@ class FakeDb:
     def scalar(self, _: object) -> None:
         return None
 
+    def scalars(self, _: object) -> list:
+        return []
+
     def add(self, item: object) -> None:
         if isinstance(item, RecoveryCase) and item.recovered_amount_paise is None:
             item.recovered_amount_paise = 0

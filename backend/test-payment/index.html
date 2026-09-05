@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Razorpay Recovery - Test Payment</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 540px;
+      margin: 60px auto;
+      padding: 20px;
+    }
+    h1 { margin-bottom: 10px; }
+    .test-label {
+      background-color: #ffebee;
+      color: #c62828;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 20px;
+      border: 1px solid #ef9a9a;
+    }
+    .form-group { margin-top: 15px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; }
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+    select { font-size: 14px; }
+    button {
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+      background-color: #3399cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    button:hover { background-color: #2b84b0; }
+    button:disabled { background-color: #888; cursor: not-allowed; }
+    #status {
+      margin-top: 20px;
+      padding: 12px;
+      background: #f5f5f5;
+      border-radius: 5px;
+      line-height: 1.6;
+    }
+    .success-text { color: #2e7d32; }
+    .error-text { color: #c62828; }
+    .info-text { color: #1565c0; }
+    .scenario-note {
+      font-size: 12px;
+      color: #555;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="test-label">
+    TEST MODE — NO REAL CUSTOMER CONTACT
+  </div>
+
+  <h1>Razorpay Test Payment</h1>
+
+  <p>
+    This page is ONLY for Razorpay Test Mode. Simulating a failure here
+    will trigger the backend recovery pipeline.
+  </p>
+
+  <div class="form-group">
+    <label for="customer_name">Customer Name</label>
+    <input id="customer_name" type="text" value="Rajesh Kumar">
+  </div>
+
+  <div class="form-group">
+    <label for="customer_email">Customer Email</label>
+    <input id="customer_email" type="email" value="rajesh.test@example.com">
+  </div>
+
+  <div class="form-group">
+    <label for="amount">Amount (₹)</label>
+    <input id="amount" type="number" value="500" min="101">
+  </div>
+
+  <div class="form-group">
+    <label for="demo_scenario">Demo Scenario (optional)</label>
+    <select id="demo_scenario">
+      <option value="">— Use real Razorpay error code —</option>
+      <option value="BAD_REQUEST_CARD_EXPIRED">Card Expired → send_card_update_link</option>
+      <option value="BAD_REQUEST_INSUFFICIENT_FUNDS">Insufficient Funds → send_payment_plan / retry</option>
+      <option value="BAD_REQUEST_INSUFFICIENT_BALANCE">Insufficient Balance → send_payment_plan / retry</option>
+      <option value="BAD_REQUEST_AUTH_NOT_COMPLETED">Authentication Failed → send_card_update_link</option>
+      <option value="BAD_REQUEST_OTP_FAILED">OTP Failed → send_card_update_link</option>
+      <option value="BAD_REQUEST_MANDATE_REJECTED">Mandate Rejected → policy-gated</option>
+    </select>
+    <div class="scenario-note">
+      Selecting a scenario embeds a specific Razorpay error code via payment
+      <code>notes.demo_scenario</code>, exercising the full recovery pipeline
+      deterministically without fabricating Razorpay data.
+    </div>
+  </div>
+
+  <button id="pay-btn" onclick="startPayment()">
+    Pay Test Payment
+  </button>
+
+  <div id="status">Ready</div>
+
+  <script>
+    // Module-level lock: only one fetch to /api/v1/cases/process per payment failure event.
+    // This prevents duplicates if payment.failed somehow fires twice for the same payment
+    // (which can occur if the user interacts with the modal multiple times).
+    let _processingPaymentId = null;
+
+    function startPayment() {
+      const amount = Number(document.getElementById("amount").value);
+      const customerName = document.getElementById("customer_name").value || "Rajesh Kumar";
+      const customerEmail = document.getElementById("customer_email").value || "rajesh.test@example.com";
+      const demoScenario = document.getElementById("demo_scenario").value;
+
+      if (amount <= 100) {
+        alert("Amount must be greater than ₹100");
+        return;
+      }
+
+      // Disable button while checkout is open to prevent concurrent Razorpay instances.
+      const btn = document.getElementById("pay-btn");
+      btn.disabled = true;
+      document.getElementById("status").innerHTML = "Initializing Razorpay Checkout...";
+
+      // Build the notes object: pass demo_scenario if one is selected.
+      // The backend reads notes.demo_scenario to override the generic BAD_REQUEST_ERROR
+      // with a deterministic, supported error code for testing.
+      const notes = { customer_name: customerName, customer_email: customerEmail };
+      if (demoScenario) {
+        notes.demo_scenario = demoScenario;
+      }
+
+      const options = {
+        // Paste a Razorpay test key locally for this standalone page. Never
+        // commit credentials to source control.
+        key: "rzp_test_your_key_id",
+        amount: amount * 100,
+        currency: "INR",
+        name: "Razorpay Recovery Demo",
+        description: demoScenario
+          ? `Test: ${demoScenario}`
+          : "Test Failed Payment",
+        prefill: { name: customerName, email: customerEmail },
+        notes: notes,
+        handler: function (response) {
+          btn.disabled = false;
+          document.getElementById("status").innerHTML =
+            "<b>PAYMENT COMPLETED</b><br>Payment ID: " + response.razorpay_payment_id;
+        },
+        modal: {
+          ondismiss: function () {
+            btn.disabled = false;
+            console.log("Razorpay checkout closed.");
+          }
+        },
+        theme: { color: "#000000" }
+      };
+
+      const rzp = new Razorpay(options);
+
+      rzp.on("payment.failed", async function (response) {
+        const paymentId = response.error.metadata.payment_id;
+
+        // --- Idempotency lock: ignore if we already started processing this payment ---
+        if (_processingPaymentId === paymentId) {
+          console.warn("payment.failed fired again for", paymentId, "- ignoring duplicate.");
+          return;
+        }
+        _processingPaymentId = paymentId;
+
+        let statusHtml = `
+          <b>PAYMENT FAILED</b><br>
+          Payment ID: ${paymentId}<br>
+          Code: ${response.error.code}<br>
+          Description: ${response.error.description}<br>
+          ${demoScenario ? `<span class="info-text">Demo scenario: ${demoScenario}</span><br>` : ""}
+          <br><b>Recovery backend:</b><br>
+          <span id="backend-status">Processing...</span>
+        `;
+        document.getElementById("status").innerHTML = statusHtml;
+
+        try {
+          const res = await fetch("http://127.0.0.1:8000/api/v1/cases/process", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ payment_id: paymentId })
+          });
+
+          const isReplay = res.headers.get("X-Idempotent-Replay") === "true";
+
+          if (!res.ok) {
+            let errorDetail = await res.text();
+            try { errorDetail = JSON.parse(errorDetail).detail || errorDetail; } catch (e) {}
+            document.getElementById("backend-status").innerHTML =
+              `<span class="error-text">❌ Recovery backend error: ${errorDetail}</span>`;
+            _processingPaymentId = null;
+            return;
+          }
+
+          const data = await res.json();
+          const replayBadge = isReplay
+            ? ` <span class="info-text">(idempotent replay — case already existed)</span>`
+            : "";
+
+          document.getElementById("backend-status").innerHTML = `
+            <span class="success-text">✓ Failure received${replayBadge}</span><br>
+            <span class="success-text">✓ Case: ${data.case_id}</span><br>
+            <span class="success-text">✓ Diagnosis: ${data.diagnosis}</span><br>
+            <span class="success-text">✓ Recovery decision: ${data.recommended_action}</span><br>
+            <span class="success-text">✓ Recovery action ${data.policy_allowed ? 'created and sent' : 'stopped by policy'}</span><br>
+            <span class="info-text">Policy: ${data.policy_reason}</span>
+            <br>
+            <a href="http://localhost:3000/dashboard?batchId=${data.batch_id}" target="_blank" style="display:inline-block; margin-top:10px; padding:8px 12px; background:#1e1e1e; color:#4ade80; text-decoration:none; border-radius:4px; font-weight:bold; font-size:14px; border: 1px solid #4ade8055;">
+              View in Live Session Dashboard →
+            </a>
+          `;
+        } catch (error) {
+          document.getElementById("backend-status").innerHTML =
+            `<span class="error-text">❌ Network error reaching backend: ${error.message}</span>`;
+          _processingPaymentId = null;
+        }
+
+        btn.disabled = false;
+      });
+
+      rzp.open();
+    }
+  </script>
+</body>
+</html>

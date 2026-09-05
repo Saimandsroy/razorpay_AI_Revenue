@@ -1,11 +1,24 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import { Sidebar } from "./components/Sidebar";
+
 export const metadata: Metadata = {
-  title: "Revenue Recovery",
-  description: "Razorpay AI Revenue Recovery dashboard",
+  title: "Razorpay AI Recovery",
+  description: "Revenue Recovery Intelligence Command Center",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return (
+    <html lang="en">
+      <body className="bg-background text-primary antialiased">
+        <Sidebar />
+        <div className="pl-64">
+          <div className="min-h-screen">
+            {children}
+          </div>
+        </div>
+      </body>
+    </html>
+  );
 }

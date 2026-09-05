@@ -14,6 +14,7 @@ class RejectedAlternativeResponse(BaseModel):
 
 class ProcessPaymentResponse(BaseModel):
     case_id: UUID
+    batch_id: UUID
     diagnosis: str
     recovery_score: float
     recommended_action: str
@@ -103,3 +104,78 @@ class AuditTrailItem(BaseModel):
     event_type: str
     timestamp: str | None
     data: dict
+
+
+class RecoveryActionResponse(BaseModel):
+    id: UUID
+    case_id: UUID
+    action_type: str
+    channel: str
+    status: str
+    recipient: str | None
+    provider: str | None
+    provider_reference: str | None
+    action_url: str | None
+    amount_paise: int
+    sent_at: str | None
+    clicked_at: str | None
+    responded_at: str | None
+    completed_at: str | None
+    revenue_recovered_paise: int
+    failure_reason: str | None
+    created_at: str | None
+
+
+class RecoveryActionListItem(BaseModel):
+    id: UUID
+    case_id: UUID
+    customer: str | None
+    amount_paise: int
+    action_type: str
+    channel: str
+    status: str
+    recipient: str | None
+    sent_at: str | None
+    revenue_recovered_paise: int
+
+
+class TimelineEvent(BaseModel):
+    event_type: str
+    timestamp: str | None
+    message: str
+
+
+class CustomerJourneyResponse(BaseModel):
+    case: dict
+    actions: list[RecoveryActionResponse]
+    timeline: list[TimelineEvent]
+    revenue: dict
+
+
+class ActionEventRequest(BaseModel):
+    event_type: str = Field(min_length=1)
+    metadata: dict = Field(default_factory=dict)
+
+
+class RecoveryActionsStatsResponse(BaseModel):
+    total_sent: int
+    successful: int
+    pending: int
+    failed: int
+    revenue_recovered_paise: int
+    revenue_at_risk_paise: int
+    by_action: dict
+
+
+class CaseListItemV2(BaseModel):
+    case_id: UUID
+    customer: str | None
+    amount_paise: int
+    diagnosis: str
+    recovery_score: float | None
+    action: str | None
+    execution_status: str | None
+    status: str
+    outcome_status: str
+    recovered_amount_paise: int
+

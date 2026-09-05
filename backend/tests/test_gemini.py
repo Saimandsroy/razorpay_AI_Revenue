@@ -70,7 +70,7 @@ def test_gemini_api_error_and_rate_limit_are_safe(monkeypatch) -> None:
         result = await get_gemini_recommendation("card_expired", CustomerContext(8, 2, 1_800_000, 3), 0.843, "send_card_update_link", client)
         return result, get_gemini_failure_reason()
     api_error, api_reason = asyncio.run(execute(_client(error=RuntimeError("service unavailable"))))
-    assert api_error is None and api_reason == "Gemini API error"
+    assert api_error is None and api_reason == "Gemini temporarily unavailable"
     rate_limited, rate_reason = asyncio.run(execute(_client(error=RuntimeError("429 too many requests"))))
     assert rate_limited is None and rate_reason == "Rate limited"
 
@@ -109,7 +109,7 @@ def test_processing_uses_gemini_and_cannot_change_deterministic_action(monkeypat
     async def explanation_only(*_: object) -> str: return gemini_output
 
     monkeypatch.setattr(processor, "get_gemini_recommendation", explanation_only)
-    response = asyncio.run(processor.process_payment(fake_db, SimpleNamespace(payment=payment_api, payment_link=SimpleNamespace(create=lambda _: {"id": "plink", "short_url": "https://example.invalid"})), payment["id"]))
+    response, _ = asyncio.run(processor.process_payment(fake_db, SimpleNamespace(payment=payment_api, payment_link=SimpleNamespace(create=lambda _: {"id": "plink", "short_url": "https://example.invalid"})), payment["id"]))
     event = next(item for item in fake_db.items if isinstance(item, AuditEvent) and item.event_type == "GEMINI_REASONING_RECEIVED")
 
     assert response.recommended_action == "send_card_update_link"
@@ -133,7 +133,7 @@ def test_processing_audits_gemini_fallback(monkeypatch) -> None:
     monkeypatch.setattr(processor, "get_gemini_recommendation", unavailable)
     monkeypatch.setattr(processor, "get_gemini_failure_reason", lambda: "Gemini API error")
     db = FakeDb()
-    response = asyncio.run(processor.process_payment(db, SimpleNamespace(payment=SimpleNamespace(fetch=lambda _: payment, all=lambda _: {"items": [payment, captured]}), payment_link=SimpleNamespace(create=lambda _: {"id": "plink", "short_url": "https://example.invalid"})), payment["id"]))
+    response, _ = asyncio.run(processor.process_payment(db, SimpleNamespace(payment=SimpleNamespace(fetch=lambda _: payment, all=lambda _: {"items": [payment, captured]}), payment_link=SimpleNamespace(create=lambda _: {"id": "plink", "short_url": "https://example.invalid"})), payment["id"]))
     event = next(item for item in db.items if isinstance(item, AuditEvent) and item.event_type == "GEMINI_REASONING_RECEIVED")
     assert response.was_fallback is True
     assert event.metadata_["fallback_reason"] == "Gemini API error"
